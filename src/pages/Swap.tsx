@@ -20,6 +20,7 @@ import { calculatePriceImpact } from "../utils/priceImpact"
 import { debounce } from "lodash"
 import { formatGasToString } from "../utils/gas"
 import { useApproveAndSwap } from "../hooks/useApproveAndSwap"
+import usePendingSwapData from "../hooks/usePendingSwapData"
 import usePoolData from "../hooks/usePoolData"
 import { usePoolTokenBalances } from "../state/wallet/hooks"
 import { useSelector } from "react-redux"
@@ -61,6 +62,7 @@ function Swap(): ReactElement {
   const btcSwapContract = useSwapContract(BTC_POOL_NAME)
   const usdSwapContract = useSwapContract(STABLECOIN_POOL_NAME)
   const veth2SwapContract = useSwapContract(VETH2_POOL_NAME)
+  const pendingSwapData = usePendingSwapData()
   const { tokenPricesUSD, gasStandard, gasFast, gasInstant } = useSelector(
     (state: AppState) => state.application,
   )
@@ -407,6 +409,7 @@ function Swap(): ReactElement {
 
   return (
     <SwapPage
+      pendingSwapData={pendingSwapData}
       tokenOptions={tokenOptions}
       exchangeRateInfo={{
         pair: `${formState.from.symbol}/${formState.to.symbol}`,
