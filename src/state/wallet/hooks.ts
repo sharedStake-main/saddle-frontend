@@ -1,10 +1,10 @@
-import { BLOCK_TIME, TOKENS_MAP } from "../../constants"
+import { BLOCK_TIME, ChainId, TOKENS_MAP } from "../../constants"
 import { Contract, Provider } from "ethcall"
+import { MulticallContract, MulticallProvider } from "../../types/ethcall"
 
 import { BigNumber } from "@ethersproject/bignumber"
-import { Call } from "ethcall/lib/call"
 import ERC20_ABI from "../../constants/abis/erc20.json"
-import { IS_DEVELOPMENT } from "../../utils/environment"
+import { Erc20 } from "../../../types/ethers-contracts/Erc20"
 import { useActiveWeb3React } from "../../hooks"
 import usePoller from "../../hooks/usePoller"
 import { useState } from "react"
@@ -13,28 +13,29 @@ export function usePoolTokenBalances(): { [token: string]: BigNumber } | null {
   const { account, chainId, library } = useActiveWeb3React()
   const [balances, setBalances] = useState<{ [token: string]: BigNumber }>({})
 
-  const ethcallProvider = new Provider()
+  const ethcallProvider = new Provider() as MulticallProvider
 
   usePoller((): void => {
     async function pollBalances(): Promise<void> {
-      if (!library || !chainId) return
+      if (!library || !chainId || !account) return
 
       await ethcallProvider.init(library)
       // override the contract address when using hardhat
-      if (IS_DEVELOPMENT) {
+      if (chainId == ChainId.HARDHAT) {
         ethcallProvider.multicallAddress =
           "0xa85233C63b9Ee964Add6F2cffe00Fd84eb32338f"
       }
 
       const tokens = Object.values(TOKENS_MAP)
       const balanceCalls = tokens
-        .map((t) => new Contract(t.addresses[chainId], ERC20_ABI))
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-call
-        .map((c): Call => c.balanceOf(account) as Call)
-      const balances = (await ethcallProvider.all(
-        balanceCalls,
-        {},
-      )) as BigNumber[]
+        .map((t) => {
+          return new Contract(
+            t.addresses[chainId],
+            ERC20_ABI,
+          ) as MulticallContract<Erc20>
+        })
+        .map((c) => c.balanceOf(account))
+      const balances = await ethcallProvider.all(balanceCalls, {})
 
       setBalances(
         tokens.reduce(
